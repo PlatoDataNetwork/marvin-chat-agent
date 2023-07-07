@@ -64,7 +64,7 @@ qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=vectorst
 
 tools = [
     Tool(
-        name="Vectara News",
+        name="Plato AI News",
         func=qa.run,
         description=(
             "use this tool when answering general knowledge queries to get "
@@ -73,6 +73,9 @@ tools = [
     )
 ]
 
+tools2 = load_tools(["arxiv"])
+
+tools.append(tools2[0])
 agent = initialize_agent(
     tools,
     llm,
