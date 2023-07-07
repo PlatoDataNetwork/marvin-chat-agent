@@ -157,16 +157,13 @@ def rss_parser(i):
     DataFrame: data frame of a processed news item (title, url, description, date, parsed_date)
     """
     b1 = BeautifulSoup(
-        str(i), "html.parser"
+        str(i), features="xml"
     )  # Parsing a news item (<item>) to BeautifulSoup object
 
     title = (
         "" if b1.find("title") is None else b1.find("title").get_text()
     )  # If <title> is absent then title = ""
     title = text_clean(title)  # cleaning title
-
-    with st.sidebar:
-        st.write(title)
 
     url = (
         "" if b1.find("link") is None else b1.find("link").get_text()
@@ -220,7 +217,7 @@ def news_agg(rss):
             "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36"
         },
     )
-    b = BeautifulSoup(resp.content, "html.parser")  # Parsing the HTTP response
+    b = BeautifulSoup(resp.content, features="xml")  # Parsing the HTTP response
     items = b.find_all("item")  # Storing all the news items
     for i in items:
         rss_df = pd.concat([rss_df, rss_parser(i).copy()])  # parsing each news item (<item>)
@@ -245,6 +242,27 @@ final_df = (
 )  # initializing the data frame to store all the news items from all the RSS Feed URLs
 for i in rss:
     final_df = pd.concat([final_df, news_agg(i)])
+
+result_str = '<html><table style="border: none;"><tr style="border: none;"><td style="border: none; height: 10px;"></td></tr>'
+
+for n, i in final_df.iterrows():  # iterating through the search results
+    href = i["url"]
+    description = i["description"]
+    url_txt = i["title"]
+
+    result_str += (
+        f'<a href="{href}" target="_blank" style="background-color: whitesmoke; display: block; height:100%; text-decoration: none; color: black; line-height: 1.2;">'
+        + f'<tr style="align:justify; border-left: 5px solid transparent; border-top: 5px solid transparent; border-bottom: 5px solid transparent; font-weight: bold; font-size: 18px; background-color: whitesmoke;">{url_txt}</tr></a>'
+        + f'<a href="{href}" target="_blank" style="background-color: whitesmoke; display: block; height:100%; text-decoration: none; color: dimgray; line-height: 1.25;">'
+        + f'<tr style="align:justify; border-left: 5px solid transparent; border-top: 0px; border-bottom: 5px solid transparent; font-size: 14px; padding-bottom:5px;">{description}</tr></a>'
+        + f'<a href="{href}" target="_blank" style="background-color: whitesmoke; display: block; height:100%; text-decoration: none; color: black;">'
+        + f'<tr style="border: none;"><td style="border: none; height: 10px;"></td></tr>'
+    )
+result_str += "</table></html>"
+
+with st.sidebar:
+    with st.container():
+        st.markdown(result_str, unsafe_allow_html=True)
 
 
 st.header("Marvin AI")
