@@ -1,3 +1,7 @@
+import langchain
+
+langchain.verbose = False
+
 from langchain.llms import OpenAI
 from langchain.llms import OpenAIChat
 from langchain.chat_models import ChatOpenAI
@@ -9,14 +13,14 @@ from langchain.chains import RetrievalQA
 from langchain.vectorstores import Vectara
 import streamlit as st
 import numpy as np
-import langchain
+
 import pandas as pd
 from bs4 import BeautifulSoup
 import requests as r
 import regex as re
 from dateutil import parser
 
-# langchain.verbose = False
+
 import os
 
 # loading environment variables
