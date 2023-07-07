@@ -1,4 +1,4 @@
-# 🦜️🔗 LangChain 🤝 Streamlit agent examples
+# 🦜️🔗 Marvin Chat Agent
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/langchain-ai/streamlit-agent?quickstart=1)
 
