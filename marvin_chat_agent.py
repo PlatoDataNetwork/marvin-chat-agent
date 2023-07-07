@@ -216,7 +216,7 @@ def news_agg(rss):
             "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36"
         },
     )
-    b = BeautifulSoup(resp.content, "xml")  # Parsing the HTTP response
+    b = BeautifulSoup(resp.content, "html.parser")  # Parsing the HTTP response
     items = b.find_all("item")  # Storing all the news items
     for i in items:
         rss_df = pd.concat([rss_df, rss_parser(i).copy()])  # parsing each news item (<item>)
