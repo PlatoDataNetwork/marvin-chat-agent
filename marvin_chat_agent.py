@@ -16,7 +16,7 @@ import requests as r
 import regex as re
 from dateutil import parser
 
-langchain.verbose = False
+# langchain.verbose = False
 import os
 
 # loading environment variables
@@ -293,7 +293,6 @@ agent = initialize_agent(
     tools,
     llm,
     agent=AgentType.CHAT_ZERO_SHOT_REACT_DESCRIPTION,
-    verbose=False,
     max_iterations=3,
     early_stopping_method="generate",
     memory=conversational_memory,
