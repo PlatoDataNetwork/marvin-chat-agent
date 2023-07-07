@@ -7,3 +7,4 @@ pandas
 beautifulsoup4
 python-dateutil
 regex
+lxml
