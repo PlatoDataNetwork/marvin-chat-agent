@@ -152,7 +152,9 @@ def rss_parser(i):
     Returns
     DataFrame: data frame of a processed news item (title, url, description, date, parsed_date)
     """
-    b1 = BeautifulSoup(str(i), "xml")  # Parsing a news item (<item>) to BeautifulSoup object
+    b1 = BeautifulSoup(
+        str(i), "html.parser"
+    )  # Parsing a news item (<item>) to BeautifulSoup object
 
     title = (
         "" if b1.find("title") is None else b1.find("title").get_text()
