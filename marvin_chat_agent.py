@@ -35,6 +35,7 @@ st.header("Marvin AI")
 VECTARA_CUSTOMER_ID = os.getenv("VECTARA_CUSTOMER_ID")
 VECTARA_CORPUS_ID = os.getenv("VECTARA_CORPUS_ID")
 VECTARA_API_KEY = os.getenv("VECTARA_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # initializing Vectara
 vectorstore = Vectara(
@@ -46,7 +47,12 @@ vectorstore = Vectara(
 )
 
 # chat completion llm
-llm = ChatOpenAI(temperature=0, model="gpt-4", streaming=True)
+llm = ChatOpenAI(
+    temperature=0,
+    model="gpt-4",
+    streaming=True,
+    openai_api_key=OPENAI_API_KEY if OPENAI_API_KEY else st.secrets["OPENAI_API_KEY"],
+)
 
 # conversational memory
 conversational_memory = ConversationBufferWindowMemory(
