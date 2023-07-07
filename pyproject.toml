@@ -13,8 +13,10 @@ langchain = ">=0.0.216"
 streamlit = ">=1.24.0"
 openai = "^0.27.8"
 python-dotenv = "^1.0.0"
-arxiv="^1.4.7"
-pandas="^2.0.3"
+arxiv = "^1.4.7"
+pandas = "^2.0.3"
+beautifulsoup4 = "^4.12.2"
+pythoon-dateutil = "^2.8.2"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.3.0"
