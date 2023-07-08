@@ -237,32 +237,41 @@ def news_agg(rss):
     return rss_df
 
 
-final_df = (
-    pd.DataFrame()
-)  # initializing the data frame to store all the news items from all the RSS Feed URLs
-for i in rss:
-    final_df = pd.concat([final_df, news_agg(i)])
+@st.cache_data
+def load_feeds():
+    final_df = (
+        pd.DataFrame()
+    )  # initializing the data frame to store all the news items from all the RSS Feed URLs
 
-result_str = '<html><table style="border: none;"><tr style="border: none;"><td style="border: none; height: 10px;"></td></tr>'
+    if final_df.empty:
+        for i in rss:
+            final_df = pd.concat([final_df, news_agg(i)])
 
-for n, i in final_df.iterrows():  # iterating through the search results
-    href = i["url"]
-    description = i["description"]
-    url_txt = i["title"]
+    result_str = '<html><table style="border: none;"><tr style="border: none;"><td style="border: none; height: 10px;"></td></tr>'
 
-    result_str += (
-        f'<a href="{href}" target="_blank" style="background-color: whitesmoke; display: block; height:100%; text-decoration: none; color: black; line-height: 1.2;">'
-        + f'<tr style="align:justify; border-left: 5px solid transparent; border-top: 5px solid transparent; border-bottom: 5px solid transparent; font-weight: bold; font-size: 18px; background-color: whitesmoke;">{url_txt}</tr></a>'
-        + f'<a href="{href}" target="_blank" style="background-color: whitesmoke; display: block; height:100%; text-decoration: none; color: dimgray; line-height: 1.25;">'
-        + f'<tr style="align:justify; border-left: 5px solid transparent; border-top: 0px; border-bottom: 5px solid transparent; font-size: 14px; padding-bottom:5px;">{description}</tr></a>'
-        + f'<a href="{href}" target="_blank" style="background-color: whitesmoke; display: block; height:100%; text-decoration: none; color: black;">'
-        + f'<tr style="border: none;"><td style="border: none; height: 10px;"></td></tr>'
-    )
-result_str += "</table></html>"
+    for n, i in final_df.iterrows():  # iterating through the search results
+        href = i["url"]
+        description = i["description"]
+        url_txt = i["title"]
+
+        result_str += (
+            f'<a href="{href}" target="_blank" style="background-color: whitesmoke; display: block; height:100%; text-decoration: none; color: black; line-height: 1.2;">'
+            + f'<tr style="align:justify; border-left: 5px solid transparent; border-top: 5px solid transparent; border-bottom: 5px solid transparent; font-weight: bold; font-size: 18px; background-color: whitesmoke;">{url_txt}</tr></a>'
+            + f'<a href="{href}" target="_blank" style="background-color: whitesmoke; display: block; height:100%; text-decoration: none; color: dimgray; line-height: 1.25;">'
+            + f'<tr style="align:justify; border-left: 5px solid transparent; border-top: 0px; border-bottom: 5px solid transparent; font-size: 14px; padding-bottom:5px;">{description}</tr></a>'
+            + f'<a href="{href}" target="_blank" style="background-color: whitesmoke; display: block; height:100%; text-decoration: none; color: black;">'
+            + f'<tr style="border: none;"><td style="border: none; height: 10px;"></td></tr>'
+        )
+    result_str += "</table></html>"
+
+    return result_str
+
+
+feed_items = load_feeds()
 
 with st.sidebar:
     with st.container():
-        st.markdown(result_str, unsafe_allow_html=True)
+        st.markdown(feed_items, unsafe_allow_html=True)
 
 
 st.header("Marvin AI")
@@ -283,7 +292,7 @@ vectorstore = Vectara(
 
 # chat completion llm
 llm = ChatOpenAI(
-    temperature=0,
+    temperature=0.1,
     model="gpt-4",
     streaming=True,
     openai_api_key=OPENAI_API_KEY if OPENAI_API_KEY else st.secrets["OPENAI_API_KEY"],
