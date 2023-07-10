@@ -45,6 +45,14 @@ class StreamHandler(BaseCallbackHandler):
         self.container.markdown(self.text)
 
 
+st.set_page_config(
+    page_title="Marvin by PlatoAI",
+    page_icon="🤖",
+    layout="centered",
+    initial_sidebar_state="expanded",
+)
+
+
 ########################################
 ######## LIST OF RSS FEED URLs #########
 ########################################
@@ -275,6 +283,7 @@ def load_feeds():
 
 feed_items = load_feeds()
 
+
 with st.sidebar:
     with st.container():
         st.markdown(feed_items, unsafe_allow_html=True)
@@ -372,6 +381,7 @@ if prompt := st.chat_input():
         response = agent.run(prompt, callbacks=[st_callback])
     except Exception as e:
         response = str(e)
+        st.exception(e)
         if response.startswith("Could not parse LLM output: `"):
             response = response.removeprefix("Could not parse LLM output: `").removesuffix("`")
         else:
