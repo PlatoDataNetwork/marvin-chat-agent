@@ -296,11 +296,20 @@ vectorstore = Vectara(
     vectara_api_key=VECTARA_API_KEY if VECTARA_API_KEY else st.secrets["VECTARA_API_KEY"],
 )
 
+# Initialize chat history
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
 if "responses" not in st.session_state:
     st.session_state["responses"] = []
 
 if "requests" not in st.session_state:
     st.session_state["requests"] = []
+
+# Display chat messages from history on app rerun
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
 # chat completion llm
 llm = ChatOpenAI(
@@ -353,17 +362,19 @@ agent = initialize_agent(
 )
 
 if prompt := st.chat_input():
+    # Add user message to chat history
+    st.session_state.messages.append({"role": "user", "content": prompt})
     st.chat_message("user").write(prompt)
     with st.chat_message("assistant"):
         st_callback = StreamlitCallbackHandler(st.container())
 
-        try:
-            response = agent.run(prompt, callbacks=[st_callback])
-        except Exception as e:
-            response = str(e)
-            if response.startswith("Could not parse LLM output: `"):
-                response = response.removeprefix("Could not parse LLM output: `").removesuffix("`")
-            else:
-                raise Exception(str(e))
-
-        st.write(response)
+    try:
+        response = agent.run(prompt, callbacks=[st_callback])
+    except Exception as e:
+        response = str(e)
+        if response.startswith("Could not parse LLM output: `"):
+            response = response.removeprefix("Could not parse LLM output: `").removesuffix("`")
+        else:
+            raise Exception(str(e))
+    st.session_state.messages.append({"role": "assistant", "content": response})
+    st.write(response)
