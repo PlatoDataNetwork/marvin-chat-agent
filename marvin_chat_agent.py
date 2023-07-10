@@ -377,4 +377,11 @@ if prompt := st.chat_input():
         else:
             raise Exception(str(e))
     st.session_state.messages.append({"role": "assistant", "content": response})
-    st.write(response)
+
+    with st.chat_message("assistant"):
+        st.markdown(response)
+
+    # with st.chat_message(message["role"]):
+    #    st.markdown(response)
+
+    # st.write(response)
