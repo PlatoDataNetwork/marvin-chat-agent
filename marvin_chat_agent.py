@@ -10,7 +10,13 @@ from langchain.agents import AgentType, initialize_agent, load_tools, Tool
 from langchain.callbacks import StreamlitCallbackHandler
 from langchain.chains.conversation.memory import ConversationBufferWindowMemory
 from langchain.chains import RetrievalQA
+from langchain.chains import RetrievalQAWithSourcesChain
+from langchain.chains import ConversationalRetrievalChain
 from langchain.vectorstores import Vectara
+from langchain.chains import LLMMathChain
+from langchain.agents import Tool
+
+
 import streamlit as st
 import numpy as np
 
@@ -274,7 +280,7 @@ with st.sidebar:
         st.markdown(feed_items, unsafe_allow_html=True)
 
 
-st.header("Marvin AI")
+st.title("Chat with Marvin about AI Intelligence")
 
 VECTARA_CUSTOMER_ID = os.getenv("VECTARA_CUSTOMER_ID")
 VECTARA_CORPUS_ID = os.getenv("VECTARA_CORPUS_ID")
@@ -290,6 +296,12 @@ vectorstore = Vectara(
     vectara_api_key=VECTARA_API_KEY if VECTARA_API_KEY else st.secrets["VECTARA_API_KEY"],
 )
 
+if "responses" not in st.session_state:
+    st.session_state["responses"] = []
+
+if "requests" not in st.session_state:
+    st.session_state["requests"] = []
+
 # chat completion llm
 llm = ChatOpenAI(
     temperature=0.1,
@@ -299,40 +311,59 @@ llm = ChatOpenAI(
 )
 
 # conversational memory
-conversational_memory = ConversationBufferWindowMemory(
-    memory_key="chat_history", k=5, return_messages=True
-)
+if "conversational_memory" not in st.session_state:
+    st.session_state.conversational_memory = ConversationBufferWindowMemory(
+        memory_key="chat_history", k=5, return_messages=True
+    )
 
 # retrieval qa chain
 qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=vectorstore.as_retriever())
 
 tools = [
     Tool(
-        name="Plato AI News",
+        name="PlatoAi",
         func=qa.run,
         description=(
             "use this tool when answering general knowledge queries to get "
-            "more information about the topic"
+            "more information about anything related to artificial intelligence news and developments"
         ),
     )
 ]
 
+llm_math = LLMMathChain(llm=llm)
+
+# initialize the math tool
+math_tool = Tool(
+    name="Calculator",
+    func=llm_math.run,
+    description="Useful for when you need to answer questions about math.",
+)
+
 tools2 = load_tools(["arxiv"])
 
 tools.append(tools2[0])
+tools.append(math_tool)
 agent = initialize_agent(
     tools,
     llm,
-    agent=AgentType.CHAT_ZERO_SHOT_REACT_DESCRIPTION,
+    agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION,
     max_iterations=3,
     early_stopping_method="generate",
-    memory=conversational_memory,
+    memory=st.session_state.conversational_memory,
 )
 
 if prompt := st.chat_input():
     st.chat_message("user").write(prompt)
     with st.chat_message("assistant"):
-        # stream_handler = StreamHandler(st.empty())
         st_callback = StreamlitCallbackHandler(st.container())
-        response = agent.run(prompt, callbacks=[st_callback])
+
+        try:
+            response = agent.run(prompt, callbacks=[st_callback])
+        except Exception as e:
+            response = str(e)
+            if response.startswith("Could not parse LLM output: `"):
+                response = response.removeprefix("Could not parse LLM output: `").removesuffix("`")
+            else:
+                raise Exception(str(e))
+
         st.write(response)
