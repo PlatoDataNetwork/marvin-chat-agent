@@ -1,0 +1,10 @@
+langchain
+streamlit
+openai
+python-dotenv
+arxiv
+pandas
+beautifulsoup4
+python-dateutil
+regex
+lxml
