@@ -14,7 +14,7 @@ class RssReader:
     def date_time_parser(self, dt):
         return int(np.round((dt.now(dt.tz) - dt).total_seconds() / 60, 0))
 
-    def elapsed_time_str(mins):
+    def elapsed_time_str(self, mins):
         """
         Returns the word form of the time elapsed (in minutes) since the news was published
 
@@ -193,7 +193,7 @@ class RssReader:
         )  # initializing the data frame to store all the news items from all the RSS Feed URLs
 
         if final_df.empty:
-            for i in self.rss:
+            for i in self.rss_urls:
                 final_df = pd.concat([final_df, self.news_agg(i)])
 
         result_str = '<html><table style="border: none;"><tr style="border: none;"><td style="border: none; height: 10px;"></td></tr>'
