@@ -142,7 +142,7 @@ qaPapers = RetrievalQA.from_chain_type(
 
 tools = [
     Tool(
-        name="PlatoAi",
+        name="PlatoGPT",
         func=qa.run,
         description=(
             "use this tool when answering general knowledge queries to get "

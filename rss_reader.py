@@ -4,6 +4,7 @@ import requests as r
 import regex as re
 from bs4 import BeautifulSoup
 from dateutil import parser
+import streamlit as st
 
 
 # Define RssReader class
@@ -187,14 +188,15 @@ class RssReader:
         )  # Converting the the time elapsed (in minutes) since the news was published into string format
         return rss_df
 
-    def load_feeds(self):
+    @st.cache_data
+    def load_feeds(_self):
         final_df = (
             pd.DataFrame()
         )  # initializing the data frame to store all the news items from all the RSS Feed URLs
 
         if final_df.empty:
-            for i in self.rss_urls:
-                final_df = pd.concat([final_df, self.news_agg(i)])
+            for i in _self.rss_urls:
+                final_df = pd.concat([final_df, _self.news_agg(i)])
 
         result_str = '<html><table style="border: none;"><tr style="border: none;"><td style="border: none; height: 10px;"></td></tr>'
 
