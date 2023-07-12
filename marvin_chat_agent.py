@@ -106,7 +106,7 @@ image = Image.open("PlatoLogo.png")
 # Display chat messages from history on app rerun
 for message in st.session_state.messages:
     if message["role"] is "assistant":
-        with st.chat_message(message["role"], avatar=image):
+        with st.chat_message(message["role"], avatar="https://i.imgur.com/Ak1BMy5.png"):
             st.markdown(message["content"])
     else:
         with st.chat_message(message["role"]):
@@ -193,7 +193,7 @@ if prompt := st.chat_input():
     # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
     st.chat_message("user").write(prompt)
-    with st.chat_message("assistant", avatar=image):
+    with st.chat_message("assistant", avatar="https://i.imgur.com/Ak1BMy5.png"):
         st_callback = StreamlitCallbackHandler(st.container())
 
     try:
@@ -207,7 +207,7 @@ if prompt := st.chat_input():
             raise Exception(str(e))
     st.session_state.messages.append({"role": "assistant", "content": response})
 
-    with st.chat_message("assistant", avatar=image):
+    with st.chat_message("assistant", avatar="https://i.imgur.com/Ak1BMy5.png"):
         st.markdown(response)
 
     # with st.chat_message(message["role"]):
