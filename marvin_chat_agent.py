@@ -24,6 +24,7 @@ from langchain.chains.conversation.memory import ConversationBufferWindowMemory
 from langchain.chains import RetrievalQA, ConversationalRetrievalChain, LLMMathChain
 from langchain.vectorstores import Vectara
 from rss_reader import RssReader
+from PIL import Image
 
 langchain.verbose = False
 
