@@ -104,6 +104,7 @@ def edit_workflow_form():
         get_extract()
         get_keywords()
         get_cluster_method()
+        get_post_process()
         prepare_prompts()
         st.write(st.session_state)
         st.session_state["workflow_save"] = True
@@ -179,7 +180,17 @@ def edit_workflow_form():
             [reason for reason in reason_cluster_method],
             key="selected_reason_method",
         )
-
+    if st.checkbox(
+        "Do post processing on all results",
+        key="post_process",
+        help="Request post processing on all the results",
+    ):
+        post_method = get_method_post_option()
+        st.selectbox(
+            "Select Post Processing method",
+            [post for post in post_method],
+            key="selected_post_method",
+        )
     st.button("Continue", on_click=run_workflow)
 
 
@@ -189,22 +200,26 @@ def get_workflow():
         st.session_state["limit_keywords"] = True
         st.session_state["extract_topics"] = True
         st.session_state["reason_clusters"] = True
+        st.session_state["post_process"] = True
         st.session_state["selected_categories"] = get_category_options()
         st.session_state["selected_extract_method"] = "Podcast Classification"
         st.session_state["selected_meta_keywords"] = ["CryptoCurrency"]
         st.session_state["selected_topics"] = ["Exciting News", "Positive News"]
         st.session_state["selected_reason_method"] = "Clusters are from multiple categories"
+        st.session_state["selected_post_method"] = "Podcaster script"
         st.session_state["time_limit"] = "3H"
     elif st.session_state["selected_workflow"] == "Financial Advisor":
         st.session_state["limit_categories"] = True
         st.session_state["limit_keywords"] = True
         st.session_state["extract_topics"] = True
         st.session_state["reason_clusters"] = True
+        st.session_state["post_process"] = True
         st.session_state["selected_categories"] = ["Press Releasse"]
         st.session_state["selected_extract_method"] = "Financial classification"
         st.session_state["selected_meta_keywords"] = ["CryptoCurrency", "PR"]
         st.session_state["selected_topics"] = ["Financial Alert", "Financial Opportunity"]
         st.session_state["selected_reason_method"] = "Clusters are from single category"
+        st.session_state["selected_post_method"] = "Financial Brief"
         st.session_state["time_limit"] = "30Min"
 
 
@@ -228,6 +243,12 @@ def prepare_prompts():
         )
         del st.session_state["cluster_reason_prompt"]
         del st.session_state["cluster_response_prompt"]
+    if "post_job_prompt" in st.session_state and "post_response_prompt" in st.session_state:
+        st.session_state["post_prompt"] = (
+            st.session_state["post_job_prompt"] + " " + st.session_state["post_response_prompt"]
+        )
+        del st.session_state["post_job_prompt"]
+        del st.session_state["post_response_prompt"]
 
 
 def get_extract():
@@ -268,6 +289,40 @@ def get_extract():
         ] = """- Provide a brief description of the topics after the topic name. Example: 'Topic: Brief Description'
 - Do not respond with anything outside of the news item. If you don't see any topics, say, 'No Topics'
 - Do not respond with numbers, just bullet points
+"""
+
+
+def get_post_process():
+    if st.session_state["selected_post_method"] == "Podcaster script":
+        st.session_state[
+            "post_job_prompt"
+        ] = """You are  a news editor for Ted Koppel.
+You will be given a series of news items. The summaries will be enclosed in triple backticks (```)
+Provide 1000 words of the latest news updates  and a meaningful title for this news report
+Also add related hashtags at the bottom of the news report.
+"""
+        st.session_state[
+            "post_response_prompt"
+        ] = """Respond with a serious and meaningfull tone
+```{text}```
+EPISODE TITLE:
+ HASHTAGS:
+"""
+
+    elif st.session_state["selected_post_method"] == "Financial Brief":
+        st.session_state[
+            "post_job_prompt"
+        ] = """You are  a news editor for Bloomberg channel.
+You will be given a series of news items. The summaries will be enclosed in triple backticks (```)
+Provide 1000 words of the updates  and a meaningful title for this financial brief
+Also add related hashtags at the bottom of the financial brief.
+"""
+        st.session_state[
+            "post_response_prompt"
+        ] = """Respond with a serious and meaningfull tone
+```{text}```
+EPISODE TITLE:
+ HASHTAGS:
 """
 
 
@@ -320,6 +375,14 @@ def get_saved_workflows_options():
     podcaster = "Podcaster"
     financial_advisor = "Financial Advisor"
     options = [podcaster, financial_advisor]
+    return options
+
+
+def get_method_post_option():
+    # get post processing options from db or query
+    script = "Podcaster script"
+    financial_brief = "Financial Brief"
+    options = [script, financial_brief]
     return options
 
 
@@ -384,7 +447,10 @@ def method_form():
     st.subheader("Methods and prompts")
     method_extract = "Topic extraction methods"
     method_detection = "Cluster reason detection methods"
-    radio = st.radio("Which type of method to manage", [method_extract, method_detection])
+    method_post = "Post processing methods"
+    radio = st.radio(
+        "Which type of method to manage", [method_extract, method_detection, method_post]
+    )
     if radio == method_extract:
         if "loaded_reason" in st.session_state:
             del st.session_state["loaded_reason"]
@@ -393,12 +459,56 @@ def method_form():
         if "loaded_extract" in st.session_state:
             del st.session_state["loaded_extract"]
         cluster_reason_detection_method_form()
+    elif radio == method_post:
+        if "loaded_reason" in st.session_state:
+            del st.session_state["loaded_reason"]
+        if "loaded_extract" in st.session_state:
+            del st.session_state["loaded_extract"]
+        post_processing_form()
+
+
+def post_processing_form():
+    st.subheader("Post processing methods")
+    if "post_save" not in st.session_state:
+        post_form_edit()
+        return False
+    elif not st.session_state["post_save"]:
+        post_form_edit()
+        return False
+    else:
+        st.session_state["post_save"] = False
+        return True
+
+
+def post_form_edit():
+    def save_post():
+        st.write(st.session_state)
+        st.session_state["post_save"] = True
+
+    def load_post():
+        if "selected_post_method" not in st.session_state:
+            return False
+        elif not st.session_state["selected_post_method"]:
+            return False
+        else:
+            get_post_process()
+            st.session_state["loaded_post"] = True
+            return True
+
+    method_post_option = get_method_post_option()
+    st.selectbox(
+        "Select Post processing method",
+        [method for method in method_post_option],
+        key="selected_post_method",
+        on_change=load_post,
+    )
+    st.text_area("Post processing prompt", key="post_job_prompt", height=240)
+    st.text_area("Post response prompt", key="post_response_prompt", height=140)
+    st.button("Continue", on_click=save_post)
 
 
 def topic_extract_form():
     st.subheader("Topic extraction method")
-    # if "loaded_extract" in st.session_state:
-    #     del st.session_state["loaded_extract"]
     if "extract_save" not in st.session_state:
         topic_extract_form_edit()
         return False
