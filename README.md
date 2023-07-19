@@ -24,8 +24,8 @@ $ pre-commit install
 ## Running
 
 ```shell
-# Run mrkl_demo.py or another app the same way
-$ streamlit run streamlit_agent/mrkl_demo.py
+# Run marvin_chat_agent.py or another app the same way
+$ streamlit run marvin_chat_agent.py
 ```
 
 ## Contributing
