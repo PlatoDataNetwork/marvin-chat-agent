@@ -34,20 +34,20 @@ from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv(), override=True)
 
 
-def check_password():
-    """Returns `True` if the user had a correct password."""
-    if "password_correct" not in st.session_state:
-        # First run, show inputs for username + password.
-        login_form()
+def check_session_state(state_key, action):
+    """Checks the session state and performs an action if the state is not set or not correct."""
+    if state_key not in st.session_state:
+        action()
         return False
-    elif not st.session_state["password_correct"]:
-        # Password not correct, show input + error.
-        login_form()
+    elif not st.session_state[state_key]:
+        action()
         return False
     else:
-        # Password correct.
-        # st.write("logged in (from check_password)")
         return True
+
+def check_password():
+    """Returns `True` if the user had a correct password."""
+    return check_session_state("password_correct", login_form)
 
 
 def login_form():
