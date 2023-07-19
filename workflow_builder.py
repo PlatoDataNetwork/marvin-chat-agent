@@ -103,6 +103,8 @@ def edit_workflow_form():
     def run_workflow():
         get_extract()
         get_keywords()
+        get_cluster_method()
+        prepare_prompts()
         st.write(st.session_state)
         st.session_state["workflow_save"] = True
 
@@ -192,7 +194,7 @@ def get_workflow():
         st.session_state["selected_meta_keywords"] = ["CryptoCurrency"]
         st.session_state["selected_topics"] = ["Exciting News", "Positive News"]
         st.session_state["selected_reason_method"] = "Clusters are from multiple categories"
-
+        st.session_state["time_limit"] = "3H"
     elif st.session_state["selected_workflow"] == "Financial Advisor":
         st.session_state["limit_categories"] = True
         st.session_state["limit_keywords"] = True
@@ -203,12 +205,35 @@ def get_workflow():
         st.session_state["selected_meta_keywords"] = ["CryptoCurrency", "PR"]
         st.session_state["selected_topics"] = ["Financial Alert", "Financial Opportunity"]
         st.session_state["selected_reason_method"] = "Clusters are from single category"
+        st.session_state["time_limit"] = "30Min"
+
+
+def prepare_prompts():
+    if "topic_extract_prompt" in st.session_state and "topic_response_prompt" in st.session_state:
+        st.session_state["topic_prompt"] = (
+            st.session_state["topic_extract_prompt"]
+            + " "
+            + st.session_state["topic_response_prompt"]
+        )
+        del st.session_state["topic_extract_prompt"]
+        del st.session_state["topic_response_prompt"]
+    if (
+        "cluster_reason_prompt" in st.session_state
+        and "cluster_response_prompt" in st.session_state
+    ):
+        st.session_state["reason_prompt"] = (
+            st.session_state["cluster_reason_prompt"]
+            + " "
+            + st.session_state["cluster_response_prompt"]
+        )
+        del st.session_state["cluster_reason_prompt"]
+        del st.session_state["cluster_response_prompt"]
 
 
 def get_extract():
     if st.session_state["selected_extract_method"] == "Podcast Classification":
         st.session_state[
-            "extract_prompt"
+            "topic_extract_prompt"
         ] = """You are a helpful assistant that helps retrieve topics talked about in a podcast transcript
 - Your goal is to extract the topic names and brief 1-sentence description of the topic
 - Topics include:
@@ -218,7 +243,7 @@ def get_extract():
   - Alarming news
 """
         st.session_state[
-            "context_prompt"
+            "topic_response_prompt"
         ] = """- Provide a brief description of the topics after the topic name. Example: 'Topic: Brief Description'
 - Use the same words and terminology that is said in the podcast
 - Do not respond with anything outside of the podcast. If you don't see any topics, say, 'No Topics'
@@ -227,7 +252,7 @@ def get_extract():
 
     elif st.session_state["selected_extract_method"] == "Financial classification":
         st.session_state[
-            "extract_prompt"
+            "topic_extract_prompt"
         ] = """You are a helpful assistant that helps retrieve topics talked about in a rss news feed
 - Your goal is to extract the topic names and brief 1-sentence description of the topic
 - Topics include:
@@ -239,23 +264,47 @@ def get_extract():
   - Advice or words of caution
 """
         st.session_state[
-            "context_prompt"
+            "topic_response_prompt"
         ] = """- Provide a brief description of the topics after the topic name. Example: 'Topic: Brief Description'
 - Do not respond with anything outside of the news item. If you don't see any topics, say, 'No Topics'
 - Do not respond with numbers, just bullet points
 """
 
 
+def get_cluster_method():
+    if st.session_state["selected_reason_method"] == "Clusters are from single category":
+        st.session_state[
+            "cluster_reason_prompt"
+        ] = """You are a helpful assistant that helps reason clusters of news in a single topic from embedded vectors
+- Your goal is to find a reason for the cluster that will be given to you.
+"""
+        st.session_state[
+            "cluster_response_prompt"
+        ] = """- Provide a description of the reason for this cluster and name it
+- Do not respond with numbers, just bullet points
+"""
+
+    elif st.session_state["selected_reason_method"] == "Clusters are from multiple categories":
+        st.session_state[
+            "cluster_reason_prompt"
+        ] = """You are a helpful assistant that helps reason clusters of news in a multiple topics from embedded vectors
+- Your goal is to find a reason for the cluster that will be given to you.
+"""
+        st.session_state[
+            "cluster_response_prompt"
+        ] = """- Provide a description of the reason for this cluster and name it
+- Do not respond with numbers, just bullet points
+"""
+
+
 def get_keywords():
-    if st.session_state["selected_metakeyword"] == "CryptoCurrency":
-        st.session_state["selected_keywords"] = ["Bitcoin", "Litecoin", "Dogecoin", "Ethereum"]
-    elif st.session_state["selected_metakeyword"] == "PR":
-        st.session_state["selected_keywords"] = [
-            "Press Release",
-            "announcement",
-            "media release",
-            "press statement",
-        ]
+    keywords = []
+    if "selected_meta_keywords" in st.session_state:
+        if "CryptoCurrency" in st.session_state["selected_meta_keywords"]:
+            keywords.extend(["Bitcoin", "Litecoin", "Dogecoin", "Ethereum"])
+        if "PR" in st.session_state["selected_meta_keywords"]:
+            keywords.extend(["Press Release", "announcement", "media release", "press statement"])
+    st.session_state["selected_keywords"] = keywords
 
 
 def get_saved_extract_options():
@@ -361,6 +410,33 @@ def topic_extract_form():
         return True
 
 
+def cluster_reason_form_edit():
+    def save_reason():
+        st.write(st.session_state)
+        st.session_state["reason_save"] = True
+
+    def load_reasons():
+        if "selected_reason_method" not in st.session_state:
+            return False
+        elif not st.session_state["selected_reason_method"]:
+            return False
+        else:
+            get_cluster_method()
+            st.session_state["loaded_reason"] = True
+            return True
+
+    cluster_reason_option = get_cluster_method_option()
+    st.selectbox(
+        "Select Cluster Reason method",
+        [method for method in cluster_reason_option],
+        key="selected_reason_method",
+        on_change=load_reasons,
+    )
+    st.text_area("Cluster prompt", key="cluster_reason_prompt", height=240)
+    st.text_area("Response prompt", key="cluster_response_prompt", height=140)
+    st.button("Continue", on_click=save_reason)
+
+
 def topic_extract_form_edit():
     def save_topic():
         st.write(st.session_state)
@@ -383,18 +459,18 @@ def topic_extract_form_edit():
         key="selected_extract_method",
         on_change=load_extract,
     )
-    st.text_area("Extract prompt", key="extract_prompt", height=240)
-    st.text_area("Context prompt", key="context_prompt", height=140)
+    st.text_area("Extract prompt", key="topic_extract_prompt", height=240)
+    st.text_area("Context prompt", key="topic_response_prompt", height=140)
     st.button("Continue", on_click=save_topic)
 
 
 def cluster_reason_detection_method_form():
     st.subheader("Cluster reason method")
     if "reason_save" not in st.session_state:
-        topic_extract_form_edit()
+        cluster_reason_form_edit()
         return False
     elif not st.session_state["reason_save"]:
-        topic_extract_form_edit()
+        cluster_reason_form_edit()
         return False
     else:
         st.session_state["reason_save"] = False
@@ -420,9 +496,9 @@ def keyword_edit_form():
         st.session_state["keyword_save"] = True
 
     def load_keyword():
-        if "selected_metakeyword" not in st.session_state:
+        if "selected_meta_keywords" not in st.session_state:
             return False
-        elif not st.session_state["selected_metakeyword"]:
+        elif not st.session_state["selected_meta_keywords"]:
             return False
         else:
             get_keywords()
@@ -443,7 +519,7 @@ def keyword_edit_form():
     st.selectbox(
         "Select MetaKeyword",
         [meta for meta in meta_keyword_option],
-        key="selected_metakeyword",
+        key="selected_meta_keywords",
         on_change=load_keyword,
     )
     st.multiselect("Select Keywords", [keyword for keyword in keywords], key="selected_keywords")
