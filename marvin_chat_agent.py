@@ -1,28 +1,17 @@
 # Import necessary packages
 import os
-import numpy as np
-import pandas as pd
-import requests as r
 import streamlit as st
-import regex as re
-from bs4 import BeautifulSoup
-from dateutil import parser
 from dotenv import load_dotenv, find_dotenv
 
 # Import necessary modules from langchain
 import langchain
-from langchain.llms import OpenAI
 import os
 import langchain
-from langchain.llms import OpenAI
-from langchain.llms import OpenAIChat
 from langchain.chat_models import ChatOpenAI
-from langchain.callbacks.base import BaseCallbackHandler
-from langchain.agents import AgentType, initialize_agent, load_tools, Tool
+from langchain.agents import AgentType, initialize_agent, Tool
 from langchain.callbacks import StreamlitCallbackHandler
 from langchain.memory import ConversationBufferMemory
-from langchain.schema import HumanMessage, AIMessage
-from langchain.chains import RetrievalQA, ConversationalRetrievalChain, LLMMathChain
+from langchain.chains import RetrievalQA, LLMMathChain
 from langchain.chains.conversation.memory import ConversationBufferWindowMemory
 from langchain.vectorstores import Vectara
 from rss_reader import RssReader
@@ -106,8 +95,6 @@ st.set_page_config(
 if check_password():
     rss_reader = RssReader(["https://zephyrnet.com/artificial-intelligence/feed/"])
     feed_items = rss_reader.load_feeds()
-
-    # feed_items = load_feeds()
 
     with st.sidebar:
         aiTab, toolsTab = st.tabs(["AI News", "AI Tools"])
@@ -196,8 +183,8 @@ if check_password():
     # conversational memory
     if "conversational_memory" not in st.session_state:
         if USE_ZEP:
-            st.session_state.conversational_memory = ConversationBufferWindowMemory(
-                memory_key="chat_history", k=5, return_messages=True
+            st.session_state.conversational_memory = ConversationBufferMemory(
+                memory_key="chat_history", chat_memory=zep_chat_history
             )
         else:
             st.session_state.conversational_memory = ConversationBufferWindowMemory(
