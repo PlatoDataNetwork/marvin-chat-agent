@@ -8,3 +8,4 @@ beautifulsoup4
 python-dateutil
 regex
 lxml
+zep-python
