@@ -1,4 +1,5 @@
 # Import necessary packages
+from distutils.util import strtobool
 import os
 import streamlit as st
 from dotenv import load_dotenv, find_dotenv
@@ -81,9 +82,15 @@ def login_form():
 
 
 # loading environment variables
-from dotenv import load_dotenv, find_dotenv
-
 load_dotenv(find_dotenv(), override=True)
+VECTARA_CUSTOMER_ID = os.getenv("VECTARA_CUSTOMER_ID")
+VECTARA_CORPUS_ID = os.getenv("VECTARA_CORPUS_ID")
+CORPUS_ID_AI_TOOLS = os.getenv("CORPUS_ID_AI_TOOLS")
+CORPUS_ID_AI_PAPERS = os.getenv("CORPUS_ID_AI_PAPERS")
+VECTARA_API_KEY = os.getenv("VECTARA_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+ZEP_API_URL = os.getenv("ZEP_API_URL")
+USE_ZEP = strtobool(os.getenv("USE_ZEP"))
 
 st.set_page_config(
     page_title="Marvin by PlatoAI",
@@ -104,14 +111,6 @@ if check_password():
 
     st.title("Hi, " + st.session_state.current_user + ". Chat with Marvin about AI Intel")
 
-    VECTARA_CUSTOMER_ID = os.getenv("VECTARA_CUSTOMER_ID")
-    VECTARA_CORPUS_ID = os.getenv("VECTARA_CORPUS_ID")
-    CORPUS_ID_AI_TOOLS = os.getenv("CORPUS_ID_AI_TOOLS")
-    CORPUS_ID_AI_PAPERS = os.getenv("CORPUS_ID_AI_PAPERS")
-    VECTARA_API_KEY = os.getenv("VECTARA_API_KEY")
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-    ZEP_API_URL = os.getenv("ZEP_API_URL")
-    USE_ZEP = False
     session_id = st.session_state.current_user  # an identifier for your user
 
     # Set up Zep Chat History
@@ -184,7 +183,7 @@ if check_password():
     if "conversational_memory" not in st.session_state:
         if USE_ZEP:
             st.session_state.conversational_memory = ConversationBufferMemory(
-                memory_key="chat_history", chat_memory=zep_chat_history
+                memory_key="chat_history", chat_memory=zep_chat_history, return_messages=True
             )
         else:
             st.session_state.conversational_memory = ConversationBufferWindowMemory(
