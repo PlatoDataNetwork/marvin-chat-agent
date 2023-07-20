@@ -31,11 +31,24 @@ from langchain.memory.chat_message_histories import ZepChatMessageHistory
 langchain.verbose = False
 
 
+def check_session_state(state_key, action):
+    """Checks the session state and performs an action if the state is not set or not correct."""
+    if state_key not in st.session_state:
+        action()
+        return False
+    elif not st.session_state[state_key]:
+        action()
+        return False
+    else:
+        return True
+
+
 def check_password():
     """Returns `True` if the user had a correct password."""
-    st.title("Plato AI : Chat with Marvin")
-    st.header("Please enter your username and password.")
+    return check_session_state("password_correct", login_form)
 
+
+def login_form():
     def password_entered():
         """Checks whether a password entered by the user is correct."""
         if (
@@ -46,21 +59,29 @@ def check_password():
             st.session_state["password_correct"] = True
             st.session_state.current_user = st.session_state["username"]
             del st.session_state["password"]  # don't store username + password
-            # del st.session_state["username"]
-
+            del st.session_state["username"]
         else:
             st.session_state["password_correct"] = False
+            del st.session_state["password"]
 
     if "password_correct" not in st.session_state:
+        st.title("Plato AI : Chat with Marvin")
+        st.header("Please enter your username and password.")
         # First run, show inputs for username + password.
-        st.text_input("Username", on_change=password_entered, key="username")
-        st.text_input("Password", type="password", on_change=password_entered, key="password")
+        with st.form(key="login"):
+            st.text_input("Username", key="username")
+            st.text_input("Password", type="password", key="password")
+            st.form_submit_button("login", on_click=password_entered)
         return False
     elif not st.session_state["password_correct"]:
+        st.title("Plato AI : Chat with Marvin")
+        st.header("Please enter your username and password.")
         # Password not correct, show input + error.
-        st.text_input("Username", on_change=password_entered, key="username")
-        st.text_input("Password", type="password", on_change=password_entered, key="password")
-        st.error("😕 User not known or password incorrect")
+        with st.form(key="login"):
+            st.text_input("Username", key="username")
+            st.text_input("Password", type="password", key="password")
+            st.form_submit_button("login", on_click=password_entered)
+            # st.error("😕 User not known or password incorrect")
         return False
     else:
         # Password correct.
@@ -93,7 +114,7 @@ if check_password():
             with st.container():
                 st.markdown(feed_items, unsafe_allow_html=True)
 
-    st.title("Hi, " + current_user + ". Chat with Marvin about AI Intel")
+    st.title("Hi, " + st.session_state.current_user + ". Chat with Marvin about AI Intel")
 
     VECTARA_CUSTOMER_ID = os.getenv("VECTARA_CUSTOMER_ID")
     VECTARA_CORPUS_ID = os.getenv("VECTARA_CORPUS_ID")
