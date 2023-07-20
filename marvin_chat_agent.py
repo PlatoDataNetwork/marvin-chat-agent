@@ -33,6 +33,8 @@ langchain.verbose = False
 
 def check_password():
     """Returns `True` if the user had a correct password."""
+    st.title("Plato AI : Chat with Marvin")
+    st.header("Please enter your username and password.")
 
     def password_entered():
         """Checks whether a password entered by the user is correct."""
@@ -42,8 +44,10 @@ def check_password():
             == st.secrets["passwords"][st.session_state["username"]]
         ):
             st.session_state["password_correct"] = True
+            st.session_state.current_user = st.session_state["username"]
             del st.session_state["password"]  # don't store username + password
-            del st.session_state["username"]
+            # del st.session_state["username"]
+
         else:
             st.session_state["password_correct"] = False
 
@@ -60,6 +64,8 @@ def check_password():
         return False
     else:
         # Password correct.
+        if not st.session_state.current_user:
+            st.session_state.current_user = st.session_state["username"]
         return True
 
 
@@ -87,7 +93,7 @@ if check_password():
             with st.container():
                 st.markdown(feed_items, unsafe_allow_html=True)
 
-    st.title("Chat with Marvin about AI Intel")
+    st.title("Hi, " + current_user + ". Chat with Marvin about AI Intel")
 
     VECTARA_CUSTOMER_ID = os.getenv("VECTARA_CUSTOMER_ID")
     VECTARA_CORPUS_ID = os.getenv("VECTARA_CORPUS_ID")
@@ -96,7 +102,7 @@ if check_password():
     VECTARA_API_KEY = os.getenv("VECTARA_API_KEY")
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     ZEP_API_URL = os.getenv("ZEP_API_URL")
-    session_id = "james001"  # an identifier for your user
+    session_id = st.session_state.current_user  # an identifier for your user
 
     # Set up Zep Chat History
     zep_chat_history = ZepChatMessageHistory(
