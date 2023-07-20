@@ -23,6 +23,7 @@ from langchain.callbacks import StreamlitCallbackHandler
 from langchain.memory import ConversationBufferMemory
 from langchain.schema import HumanMessage, AIMessage
 from langchain.chains import RetrievalQA, ConversationalRetrievalChain, LLMMathChain
+from langchain.chains.conversation.memory import ConversationBufferWindowMemory
 from langchain.vectorstores import Vectara
 from rss_reader import RssReader
 from PIL import Image
@@ -123,6 +124,7 @@ if check_password():
     VECTARA_API_KEY = os.getenv("VECTARA_API_KEY")
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     ZEP_API_URL = os.getenv("ZEP_API_URL")
+    USE_ZEP = False
     session_id = st.session_state.current_user  # an identifier for your user
 
     # Set up Zep Chat History
@@ -193,9 +195,14 @@ if check_password():
 
     # conversational memory
     if "conversational_memory" not in st.session_state:
-        st.session_state.conversational_memory = ConversationBufferMemory(
-            memory_key="chat_history", chat_memory=zep_chat_history
-        )
+        if USE_ZEP:
+            st.session_state.conversational_memory = ConversationBufferWindowMemory(
+                memory_key="chat_history", k=5, return_messages=True
+            )
+        else:
+            st.session_state.conversational_memory = ConversationBufferWindowMemory(
+                memory_key="chat_history", k=5, return_messages=True
+            )
 
     # retrieval qa chain
     qa = RetrievalQA.from_chain_type(
@@ -216,7 +223,7 @@ if check_password():
             func=qa.run,
             description=(
                 "use this tool when answering general knowledge queries to get "
-                "more information about anything related to artificial intelligence news and developments"
+                "more information about anything related to technology news"
             ),
         ),
         Tool(
