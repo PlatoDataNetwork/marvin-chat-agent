@@ -20,11 +20,13 @@ from langchain.chat_models import ChatOpenAI
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.agents import AgentType, initialize_agent, load_tools, Tool
 from langchain.callbacks import StreamlitCallbackHandler
-from langchain.chains.conversation.memory import ConversationBufferWindowMemory
+from langchain.memory import ConversationBufferMemory
+from langchain.schema import HumanMessage, AIMessage
 from langchain.chains import RetrievalQA, ConversationalRetrievalChain, LLMMathChain
 from langchain.vectorstores import Vectara
 from rss_reader import RssReader
 from PIL import Image
+from langchain.memory.chat_message_histories import ZepChatMessageHistory
 
 langchain.verbose = False
 
@@ -52,7 +54,6 @@ with st.sidebar:
         with st.container():
             st.markdown(feed_items, unsafe_allow_html=True)
 
-
 st.title("Chat with Marvin about AI Intelligence")
 
 VECTARA_CUSTOMER_ID = os.getenv("VECTARA_CUSTOMER_ID")
@@ -61,6 +62,14 @@ CORPUS_ID_AI_TOOLS = os.getenv("CORPUS_ID_AI_TOOLS")
 CORPUS_ID_AI_PAPERS = os.getenv("CORPUS_ID_AI_PAPERS")
 VECTARA_API_KEY = os.getenv("VECTARA_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+ZEP_API_URL = os.getenv("ZEP_API_URL")
+session_id = "james001"  # an identifier for your user
+
+# Set up Zep Chat History
+zep_chat_history = ZepChatMessageHistory(
+    session_id=session_id,
+    url=ZEP_API_URL,
+)
 
 # initializing Vectara
 vectorstoreAINews = Vectara(
@@ -122,8 +131,8 @@ llm = ChatOpenAI(
 
 # conversational memory
 if "conversational_memory" not in st.session_state:
-    st.session_state.conversational_memory = ConversationBufferWindowMemory(
-        memory_key="chat_history", k=5, return_messages=True
+    st.session_state.conversational_memory = ConversationBufferMemory(
+        memory_key="chat_history", chat_memory=zep_chat_history
     )
 
 # retrieval qa chain
