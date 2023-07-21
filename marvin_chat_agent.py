@@ -12,6 +12,7 @@ from langchain.chat_models import ChatOpenAI
 from langchain.agents import AgentType, initialize_agent, Tool
 from langchain.callbacks import StreamlitCallbackHandler
 from langchain.memory import ConversationBufferMemory
+from langchain.memory import ZepMemory
 from langchain.chains import RetrievalQA, LLMMathChain
 from langchain.chains.conversation.memory import ConversationBufferWindowMemory
 from langchain.vectorstores import Vectara
@@ -182,8 +183,12 @@ if check_password():
     # conversational memory
     if "conversational_memory" not in st.session_state:
         if USE_ZEP:
-            st.session_state.conversational_memory = ConversationBufferMemory(
-                memory_key="chat_history", chat_memory=zep_chat_history, return_messages=True
+            st.session_state.conversational_memory = ZepMemory(
+                session_id=session_id,
+                url=ZEP_API_URL,
+                api_key=ZEP_API_URL,
+                return_messages=True,
+                memory_key="chat_history",
             )
         else:
             st.session_state.conversational_memory = ConversationBufferWindowMemory(
@@ -238,11 +243,8 @@ if check_password():
         func=llm_math.run,
         description="Useful for when you need to answer questions about math.",
     )
-
-    # tools2 = load_tools(["arxiv"])
-
-    # tools.append(tools2[0])
     tools.append(math_tool)
+
     agent = initialize_agent(
         tools,
         llm,
