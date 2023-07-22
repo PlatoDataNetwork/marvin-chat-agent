@@ -8,16 +8,18 @@ readme = "README.md"
 packages = [{include = "streamlit_agent"}]
 
 [tool.poetry.dependencies]
-python = "^3.9"
-langchain = ">=0.0.216"
+python = "^3.10"
+regex = "^2023.6.3"
+langchain = "0.0.238"
 streamlit = ">=1.24.0"
 openai = "^0.27.8"
 python-dotenv = "^1.0.0"
 arxiv = "^1.4.7"
 pandas = "^2.0.3"
 beautifulsoup4 = "^4.12.2"
-pythoon-dateutil = "^2.8.2"
+python-dateutil = "^2.8.2"
 lxml = "^4.9.3"
+zep-python="^0.33"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.3.0"
