@@ -274,8 +274,3 @@ if check_password():
 
         with st.chat_message("assistant", avatar="https://i.imgur.com/Ak1BMy5.png"):
             st.markdown(response)
-
-        # with st.chat_message(message["role"]):
-        #    st.markdown(response)
-
-        # st.write(response)
