@@ -9,6 +9,7 @@ packages = [{include = "streamlit_agent"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
+regex = "^2023.6.3"
 langchain = ">=0.0.216"
 streamlit = ">=1.24.0"
 openai = "^0.27.8"
