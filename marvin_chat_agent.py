@@ -8,19 +8,38 @@ from dotenv import load_dotenv, find_dotenv
 import langchain
 import os
 import langchain
+from langchain import PromptTemplate
 from langchain.chat_models import ChatOpenAI
 from langchain.agents import AgentType, initialize_agent, Tool
 from langchain.callbacks import StreamlitCallbackHandler
 from langchain.memory import ConversationBufferMemory
 from langchain.memory import ZepMemory
-from langchain.chains import RetrievalQA, LLMMathChain
+from langchain.chains import RetrievalQA, LLMMathChain, RetrievalQAWithSourcesChain
 from langchain.chains.conversation.memory import ConversationBufferWindowMemory
 from langchain.vectorstores import Vectara
+
 from rss_reader import RssReader
 from PIL import Image
+import promptlayer  # Don't forget this 🍰
+from langchain.callbacks import PromptLayerCallbackHandler
 from langchain.memory.chat_message_histories import ZepChatMessageHistory
 
 langchain.verbose = False
+
+
+# loading environment variables
+load_dotenv(find_dotenv(), override=True)
+VECTARA_CUSTOMER_ID = os.getenv("VECTARA_CUSTOMER_ID")
+VECTARA_CORPUS_ID = os.getenv("VECTARA_CORPUS_ID")
+CORPUS_ID_AI_TOOLS = os.getenv("CORPUS_ID_AI_TOOLS")
+CORPUS_ID_AI_PAPERS = os.getenv("CORPUS_ID_AI_PAPERS")
+VECTARA_API_KEY = os.getenv("VECTARA_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+ZEP_API_URL = os.getenv("ZEP_API_URL")
+USE_ZEP = strtobool(os.getenv("USE_ZEP"))
+PROMPT_LAYER_API_KEY = os.getenv("PROMPT_LAYER_API_KEY")
+
+promptlayer.api_key = PROMPT_LAYER_API_KEY
 
 
 def check_session_state(state_key, action):
@@ -82,17 +101,6 @@ def login_form():
         return True
 
 
-# loading environment variables
-load_dotenv(find_dotenv(), override=True)
-VECTARA_CUSTOMER_ID = os.getenv("VECTARA_CUSTOMER_ID")
-VECTARA_CORPUS_ID = os.getenv("VECTARA_CORPUS_ID")
-CORPUS_ID_AI_TOOLS = os.getenv("CORPUS_ID_AI_TOOLS")
-CORPUS_ID_AI_PAPERS = os.getenv("CORPUS_ID_AI_PAPERS")
-VECTARA_API_KEY = os.getenv("VECTARA_API_KEY")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-ZEP_API_URL = os.getenv("ZEP_API_URL")
-USE_ZEP = strtobool(os.getenv("USE_ZEP"))
-
 st.set_page_config(
     page_title="Marvin by PlatoAI",
     page_icon="🤖",
@@ -104,7 +112,29 @@ if check_password():
     rss_reader = RssReader(["https://zephyrnet.com/artificial-intelligence/feed/"])
     feed_items = rss_reader.load_feeds()
 
+    # Check if 'selected_option' is already in the session state
+    if "selected_tone" not in st.session_state:
+        st.session_state.selected_tone = "Creative"  # default value
+
+    tones = [
+        "Professional",
+        "Friendly",
+        "Inspirational",
+        "Confident",
+        "Witty",
+        "Joyful",
+        "Creative",
+        "Direct",
+        "Polite",
+        "Encouraging",
+    ]
+
     with st.sidebar:
+        selectedTone = st.selectbox(
+            "Tone", tones, index=tones.index(st.session_state.selected_tone)
+        )
+        # Update the session state with the currently selected option
+        st.session_state.selected_tone = selectedTone
         aiTab, toolsTab = st.tabs(["AI News", "AI Tools"])
         with aiTab:
             with st.container():
@@ -174,16 +204,17 @@ if check_password():
 
     # chat completion llm
     llm = ChatOpenAI(
-        temperature=0.1,
+        temperature=0.0,
         model="gpt-4",
         streaming=True,
         openai_api_key=OPENAI_API_KEY if OPENAI_API_KEY else st.secrets["OPENAI_API_KEY"],
+        callbacks=[PromptLayerCallbackHandler(pl_tags=["langchain"])],
     )
 
-    # conversational memory
-    if "conversational_memory" not in st.session_state:
+    # memory
+    if "memory" not in st.session_state:
         if USE_ZEP:
-            st.session_state.conversational_memory = ZepMemory(
+            st.session_state.memory = ZepMemory(
                 session_id=session_id,
                 url=ZEP_API_URL,
                 api_key=ZEP_API_URL,
@@ -191,7 +222,7 @@ if check_password():
                 memory_key="chat_history",
             )
         else:
-            st.session_state.conversational_memory = ConversationBufferWindowMemory(
+            st.session_state.memory = ConversationBufferWindowMemory(
                 memory_key="chat_history", k=5, return_messages=True
             )
 
@@ -210,19 +241,11 @@ if check_password():
 
     tools = [
         Tool(
-            name="PlatoGPT",
+            name="AINews",
             func=qa.run,
             description=(
                 "use this tool when answering general knowledge queries to get "
                 "more information about anything related to technology news"
-            ),
-        ),
-        Tool(
-            name="AITools",
-            func=qaTools.run,
-            description=(
-                "use this tool when answering general knowledge queries to get "
-                "more information about anything related to artifical intelligence tools, platforms, software, and services"
             ),
         ),
         Tool(
@@ -231,6 +254,14 @@ if check_password():
             description=(
                 "use this tool when answering general knowledge queries to get "
                 "more information about anything related to artifical intelligence academic knowledge and published papers"
+            ),
+        ),
+        Tool(
+            name="AITools",
+            func=qaTools.run,
+            description=(
+                "use this tool when answering general knowledge queries to get "
+                "more information about anything related to artifical intelligence tools, platforms, software, and services"
             ),
         ),
     ]
@@ -251,7 +282,7 @@ if check_password():
         agent=AgentType.CONVERSATIONAL_REACT_DESCRIPTION,
         max_iterations=3,
         early_stopping_method="generate",
-        memory=st.session_state.conversational_memory,
+        memory=st.session_state.memory,
     )
 
     if prompt := st.chat_input():
@@ -262,7 +293,10 @@ if check_password():
             st_callback = StreamlitCallbackHandler(st.container())
 
         try:
-            response = agent.run(prompt, callbacks=[st_callback])
+            response = agent.run(
+                prompt + ". Please answer with a " + selectedTone + " tone.",
+                callbacks=[st_callback],
+            )
         except Exception as e:
             response = str(e)
             st.exception(e)
