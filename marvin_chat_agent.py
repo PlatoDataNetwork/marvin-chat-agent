@@ -1,4 +1,5 @@
 # Import necessary packages
+import base64
 from distutils.util import strtobool
 import os
 import streamlit as st
@@ -24,6 +25,9 @@ import promptlayer  # Don't forget this 🍰
 from langchain.callbacks import PromptLayerCallbackHandler
 from langchain.memory.chat_message_histories import ZepChatMessageHistory
 
+from elevenlabs import generate, play, voices
+from elevenlabs.api.error import UnauthenticatedRateLimitError, RateLimitError
+
 langchain.verbose = False
 
 
@@ -38,6 +42,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ZEP_API_URL = os.getenv("ZEP_API_URL")
 USE_ZEP = strtobool(os.getenv("USE_ZEP"))
 PROMPT_LAYER_API_KEY = os.getenv("PROMPT_LAYER_API_KEY")
+ELEVEN_LABS_API_KEY = os.getenv("ELEVEN_LABS_API_KEY")
 
 promptlayer.api_key = PROMPT_LAYER_API_KEY
 
@@ -101,6 +106,19 @@ def login_form():
         return True
 
 
+def autoplay_audio(audio_data):
+    b64 = base64.b64encode(audio_data).decode()
+    md = f"""
+            <audio autoplay="true">
+            <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+            </audio>
+            """
+    st.markdown(
+        md,
+        unsafe_allow_html=True,
+    )
+
+
 st.set_page_config(
     page_title="Marvin by PlatoAI",
     page_icon="🤖",
@@ -114,13 +132,13 @@ if check_password():
 
     # Check if 'selected_option' is already in the session state
     if "selected_tone" not in st.session_state:
-        st.session_state.selected_tone = "Creative"  # default value
+        st.session_state.selected_tone = "Friendly Network Newscaster"  # default value
 
     tones = [
         "Professional",
-        "Friendly",
-        "Inspirational",
-        "Confident",
+        "Friendly Network Newscaster",
+        "Witty Newscaster",
+        "GenZ Influencer",
         "Witty",
         "Joyful",
         "Creative",
@@ -129,13 +147,21 @@ if check_password():
         "Encouraging",
     ]
 
+    if "selected_voice" not in st.session_state:
+        st.session_state.selected_voice = "None"  # default value
+
+    voiceList = [v.name for v in voices()]
+    voiceList.insert(0, "None")
     with st.sidebar:
+        selectedVoice = st.selectbox(label="Choose the voice", options=voiceList)
         selectedTone = st.selectbox(
             "Tone", tones, index=tones.index(st.session_state.selected_tone)
         )
+        st.session_state.selected_voice = selectedVoice
         # Update the session state with the currently selected option
         st.session_state.selected_tone = selectedTone
         aiTab, toolsTab = st.tabs(["AI News", "AI Tools"])
+
         with aiTab:
             with st.container():
                 st.markdown(feed_items, unsafe_allow_html=True)
@@ -203,8 +229,16 @@ if check_password():
                 st.markdown(message["content"])
 
     # chat completion llm
-    llm = ChatOpenAI(
+    llm35 = ChatOpenAI(
         temperature=0.0,
+        model="gpt-3.5-turbo-16k-0613",
+        streaming=True,
+        openai_api_key=OPENAI_API_KEY if OPENAI_API_KEY else st.secrets["OPENAI_API_KEY"],
+        callbacks=[PromptLayerCallbackHandler(pl_tags=["langchain"])],
+    )
+
+    llm4 = ChatOpenAI(
+        temperature=0.5,
         model="gpt-4",
         streaming=True,
         openai_api_key=OPENAI_API_KEY if OPENAI_API_KEY else st.secrets["OPENAI_API_KEY"],
@@ -228,15 +262,15 @@ if check_password():
 
     # retrieval qa chain
     qa = RetrievalQA.from_chain_type(
-        llm=llm, chain_type="stuff", retriever=vectorstoreAINews.as_retriever()
+        llm=llm35, chain_type="stuff", retriever=vectorstoreAINews.as_retriever()
     )
 
     qaTools = RetrievalQA.from_chain_type(
-        llm=llm, chain_type="stuff", retriever=vectorstoreAITools.as_retriever()
+        llm=llm35, chain_type="stuff", retriever=vectorstoreAITools.as_retriever()
     )
 
     qaPapers = RetrievalQA.from_chain_type(
-        llm=llm, chain_type="stuff", retriever=vectorstoreAIPapers.as_retriever()
+        llm=llm35, chain_type="stuff", retriever=vectorstoreAIPapers.as_retriever()
     )
 
     tools = [
@@ -266,7 +300,7 @@ if check_password():
         ),
     ]
 
-    llm_math = LLMMathChain(llm=llm)
+    llm_math = LLMMathChain(llm=llm4)
 
     # initialize the math tool
     math_tool = Tool(
@@ -278,7 +312,7 @@ if check_password():
 
     agent = initialize_agent(
         tools,
-        llm,
+        llm4,
         agent=AgentType.CONVERSATIONAL_REACT_DESCRIPTION,
         max_iterations=3,
         early_stopping_method="generate",
@@ -294,7 +328,10 @@ if check_password():
 
         try:
             response = agent.run(
-                prompt + ". Please answer with a " + selectedTone + " tone.",
+                prompt
+                + ". Use the AINews Tool. Please answer with a "
+                + selectedTone
+                + " tone and please address the user using the user's first name.",
                 callbacks=[st_callback],
             )
         except Exception as e:
@@ -308,6 +345,23 @@ if check_password():
 
         with st.chat_message("assistant", avatar="https://i.imgur.com/Ak1BMy5.png"):
             st.markdown(response)
+
+        if selectedVoice != "None":
+            try:
+                audio = generate(
+                    text=response,
+                    voice=selectedVoice,
+                    model="eleven_multilingual_v1",
+                    api_key=ELEVEN_LABS_API_KEY if ELEVEN_LABS_API_KEY else st.secrets["API_KEY"],
+                )
+                autoplay_audio(audio)
+                # st.audio(data=audio)
+            except UnauthenticatedRateLimitError:
+                e = UnauthenticatedRateLimitError("Unauthenticated Rate Limit Error")
+                st.exception(e)
+            except RateLimitError:
+                e = RateLimitError("Rate Limit")
+                st.exception(e)
 
         # with st.chat_message(message["role"]):
         #    st.markdown(response)

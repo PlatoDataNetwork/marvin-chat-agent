@@ -21,6 +21,7 @@ python-dateutil = "^2.8.2"
 lxml = "^4.9.3"
 zep-python="^0.33"
 promptlayer="^0.1.92"
+elevenlabs="^0.2.21"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.3.0"

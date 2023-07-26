@@ -91,9 +91,6 @@ class RssReader:
         Returns
         str: root domain of RSS feed URL
         """
-        # RSS feed URL of NDTV profit (http://feeds.feedburner.com/ndtvprofit-latest?format=xml) doesn't contain NDTV's root domain
-        if rss.find("ndtvprofit") >= 0:
-            rss = "ndtv profit"
         rss = rss.replace("https://www.", "")  # removing "https://www." from RSS feed URL
         rss = rss.split("/")  # splitting the remaining portion of RSS feed URL by '/'
         return rss[0]  # first element/item of the split RSS feed URL is the root domain
