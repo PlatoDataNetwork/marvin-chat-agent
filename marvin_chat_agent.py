@@ -201,7 +201,11 @@ if check_password():
     voiceList = [v.name for v in voices()]
     voiceList.insert(0, "None")
     with st.sidebar:
-        selectedVoice = st.selectbox(label="Choose the voice", options=voiceList)
+        selectedVoice = st.selectbox(
+            label="Choose the voice",
+            options=voiceList,
+            index=voiceList.index(st.session_state.selected_voice),
+        )
         selectedTone = st.selectbox(
             "Tone", tones, index=tones.index(st.session_state.selected_tone)
         )
