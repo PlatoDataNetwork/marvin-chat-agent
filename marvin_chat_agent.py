@@ -27,7 +27,6 @@ from elevenlabs import generate, play, voices
 from elevenlabs.api.error import UnauthenticatedRateLimitError, RateLimitError
 from st_custom_components import st_audiorec
 import openai
-from pydub import AudioSegment
 
 
 langchain.verbose = False
