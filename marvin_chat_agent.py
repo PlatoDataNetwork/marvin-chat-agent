@@ -196,7 +196,7 @@ if check_password():
     ]
 
     if "selected_voice" not in st.session_state:
-        st.session_state.selected_voice = "Adam"  # default value
+        st.session_state.selected_voice = "Elli"  # default value
 
     voiceList = [v.name for v in voices()]
     voiceList.insert(0, "None")
