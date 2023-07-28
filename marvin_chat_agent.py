@@ -1,13 +1,13 @@
 # Import necessary packages
 import base64
 from distutils.util import strtobool
-import os
+import io
 import streamlit as st
+import streamlit.components.v1 as components
 from dotenv import load_dotenv, find_dotenv
-
-# Import necessary modules from langchain
-import langchain
 import os
+import numpy as np
+from io import BytesIO
 import langchain
 from langchain import PromptTemplate
 from langchain.chat_models import ChatOpenAI
@@ -18,15 +18,17 @@ from langchain.memory import ZepMemory
 from langchain.chains import RetrievalQA, LLMMathChain, RetrievalQAWithSourcesChain
 from langchain.chains.conversation.memory import ConversationBufferWindowMemory
 from langchain.vectorstores import Vectara
-
 from rss_reader import RssReader
 from PIL import Image
-import promptlayer  # Don't forget this 🍰
+import promptlayer
 from langchain.callbacks import PromptLayerCallbackHandler
 from langchain.memory.chat_message_histories import ZepChatMessageHistory
-
 from elevenlabs import generate, play, voices
 from elevenlabs.api.error import UnauthenticatedRateLimitError, RateLimitError
+from st_custom_components import st_audiorec
+import openai
+from pydub import AudioSegment
+
 
 langchain.verbose = False
 
@@ -119,6 +121,53 @@ def autoplay_audio(audio_data):
     )
 
 
+def submitPrompt(prompt):
+    # Add user message to chat history
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.chat_message("user").write(prompt)
+
+    with st.chat_message("assistant", avatar="https://i.imgur.com/Ak1BMy5.png"):
+        st_callback = StreamlitCallbackHandler(st.container())
+
+    try:
+        response = agent.run(
+            prompt
+            + ". Please answer with a "
+            + selectedTone
+            + " tone and please address the user using the user's first name.",
+            callbacks=[st_callback],
+        )
+    except Exception as e:
+        response = str(e)
+        st.exception(e)
+        if response.startswith("Could not parse LLM output: `"):
+            response = response.removeprefix("Could not parse LLM output: `").removesuffix("`")
+        else:
+            raise Exception(str(e))
+    st.session_state.messages.append({"role": "assistant", "content": response})
+
+    with st.chat_message("assistant", avatar="https://i.imgur.com/Ak1BMy5.png"):
+        st.markdown(response)
+
+    if selectedVoice != "None":
+        with st.spinner("Generating Audio..."):
+            try:
+                audio = generate(
+                    text=response,
+                    voice=selectedVoice,
+                    model="eleven_multilingual_v1",
+                    api_key=ELEVEN_LABS_API_KEY if ELEVEN_LABS_API_KEY else st.secrets["API_KEY"],
+                )
+                autoplay_audio(audio)
+                # st.audio(data=audio)
+            except UnauthenticatedRateLimitError:
+                e = UnauthenticatedRateLimitError("Unauthenticated Rate Limit Error")
+                st.exception(e)
+            except RateLimitError:
+                e = RateLimitError("Rate Limit")
+                st.exception(e)
+
+
 st.set_page_config(
     page_title="Marvin by PlatoAI",
     page_icon="🤖",
@@ -132,14 +181,14 @@ if check_password():
 
     # Check if 'selected_option' is already in the session state
     if "selected_tone" not in st.session_state:
-        st.session_state.selected_tone = "Friendly Network Newscaster"  # default value
+        st.session_state.selected_tone = "Witty Newscaster"  # default value
 
     tones = [
         "Professional",
         "Friendly Network Newscaster",
         "Witty Newscaster",
         "GenZ Influencer",
-        "Witty",
+        "Old time radio show host",
         "Joyful",
         "Creative",
         "Direct",
@@ -148,7 +197,7 @@ if check_password():
     ]
 
     if "selected_voice" not in st.session_state:
-        st.session_state.selected_voice = "None"  # default value
+        st.session_state.selected_voice = "Adam"  # default value
 
     voiceList = [v.name for v in voices()]
     voiceList.insert(0, "None")
@@ -219,27 +268,18 @@ if check_password():
 
     image = Image.open("PlatoLogo.png")
 
-    # Display chat messages from history on app rerun
-    for message in st.session_state.messages:
-        if message["role"] is "assistant":
-            with st.chat_message(message["role"], avatar="https://i.imgur.com/Ak1BMy5.png"):
-                st.markdown(message["content"])
-        else:
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
-
     # chat completion llm
     llm35 = ChatOpenAI(
         temperature=0.0,
         model="gpt-3.5-turbo-16k-0613",
-        streaming=True,
+        streaming=False,
         openai_api_key=OPENAI_API_KEY if OPENAI_API_KEY else st.secrets["OPENAI_API_KEY"],
         callbacks=[PromptLayerCallbackHandler(pl_tags=["langchain"])],
     )
 
-    llm4 = ChatOpenAI(
+    llm35Stream = ChatOpenAI(
         temperature=0.5,
-        model="gpt-4",
+        model="gpt-3.5-turbo-16k-0613",
         streaming=True,
         openai_api_key=OPENAI_API_KEY if OPENAI_API_KEY else st.secrets["OPENAI_API_KEY"],
         callbacks=[PromptLayerCallbackHandler(pl_tags=["langchain"])],
@@ -290,80 +330,56 @@ if check_password():
                 "more information about anything related to artifical intelligence academic knowledge and published papers"
             ),
         ),
-        Tool(
-            name="AITools",
-            func=qaTools.run,
-            description=(
-                "use this tool when answering general knowledge queries to get "
-                "more information about anything related to artifical intelligence tools, platforms, software, and services"
-            ),
-        ),
+        # Tool(
+        #    name="AITools",
+        #    func=qaTools.run,
+        #    description=(
+        #        "use this tool when answering general knowledge queries to get "
+        #        "more information about anything related to artifical intelligence tools, platforms, software, and services"
+        #    ),
+        # ),
     ]
-
-    llm_math = LLMMathChain(llm=llm4)
-
-    # initialize the math tool
-    math_tool = Tool(
-        name="Calculator",
-        func=llm_math.run,
-        description="Useful for when you need to answer questions about math.",
-    )
-    tools.append(math_tool)
 
     agent = initialize_agent(
         tools,
-        llm4,
-        agent=AgentType.CONVERSATIONAL_REACT_DESCRIPTION,
+        llm35Stream,
+        agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION,
         max_iterations=3,
         early_stopping_method="generate",
         memory=st.session_state.memory,
     )
 
+    transcript = ""
+
+    c = st.container()
+
+    with c:
+        wav_audio_data = st_audiorec()
+
+    # Display chat messages from history on app rerun
+    for message in st.session_state.messages:
+        if message["role"] is "assistant":
+            with st.chat_message(message["role"], avatar="https://i.imgur.com/Ak1BMy5.png"):
+                st.markdown(message["content"])
+        else:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+    if wav_audio_data is not None:
+        if len(wav_audio_data) > 0:
+            with open("test.wav", "wb") as f:
+                f.write(wav_audio_data)
+            x = open("test.wav", "rb")
+
+            # display audio data as received on the backend
+            # st.audio(wav_audio_data, format='audio/wav')
+            with st.spinner("Transcribing Voice..."):
+                transcript = openai.Audio.transcribe("whisper-1", x)
+            submitPrompt(transcript.text)
+            # st.markdown(transcript.text)
+
+            # if prompt := transcript.text:
+            #    submitPrompt(prompt)
+    # else:
     if prompt := st.chat_input():
-        # Add user message to chat history
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        st.chat_message("user").write(prompt)
-        with st.chat_message("assistant", avatar="https://i.imgur.com/Ak1BMy5.png"):
-            st_callback = StreamlitCallbackHandler(st.container())
-
-        try:
-            response = agent.run(
-                prompt
-                + ". Use the AINews Tool. Please answer with a "
-                + selectedTone
-                + " tone and please address the user using the user's first name.",
-                callbacks=[st_callback],
-            )
-        except Exception as e:
-            response = str(e)
-            st.exception(e)
-            if response.startswith("Could not parse LLM output: `"):
-                response = response.removeprefix("Could not parse LLM output: `").removesuffix("`")
-            else:
-                raise Exception(str(e))
-        st.session_state.messages.append({"role": "assistant", "content": response})
-
-        with st.chat_message("assistant", avatar="https://i.imgur.com/Ak1BMy5.png"):
-            st.markdown(response)
-
-        if selectedVoice != "None":
-            try:
-                audio = generate(
-                    text=response,
-                    voice=selectedVoice,
-                    model="eleven_multilingual_v1",
-                    api_key=ELEVEN_LABS_API_KEY if ELEVEN_LABS_API_KEY else st.secrets["API_KEY"],
-                )
-                autoplay_audio(audio)
-                # st.audio(data=audio)
-            except UnauthenticatedRateLimitError:
-                e = UnauthenticatedRateLimitError("Unauthenticated Rate Limit Error")
-                st.exception(e)
-            except RateLimitError:
-                e = RateLimitError("Rate Limit")
-                st.exception(e)
-
-        # with st.chat_message(message["role"]):
-        #    st.markdown(response)
-
-        # st.write(response)
+        submitPrompt(prompt)
