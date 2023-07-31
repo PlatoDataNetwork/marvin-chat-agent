@@ -185,8 +185,7 @@ class RssReader:
         )  # Converting the the time elapsed (in minutes) since the news was published into string format
         return rss_df
 
-    @st.cache_data
-    def load_feeds(_self):
+    def getFeedData(_self):
         final_df = (
             pd.DataFrame()
         )  # initializing the data frame to store all the news items from all the RSS Feed URLs
@@ -194,21 +193,33 @@ class RssReader:
         if final_df.empty:
             for i in _self.rss_urls:
                 final_df = pd.concat([final_df, _self.news_agg(i)])
+                return final_df
 
-        result_str = '<html><table style="border: none;"><tr style="border: none;"><td style="border: none; height: 10px;"></td></tr>'
+    @st.cache_data
+    def load_feeds(_self):
+        final_df = _self.getFeedData()
 
-        for n, i in final_df.iterrows():  # iterating through the search results
+        # Header for the table
+        result_str = '<html><table style="border: none; width: 100%;"><tr style="border: none;"><td style="border: none; height: 10px;"></td></tr>'
+
+        # Card Style (You can tweak this as per your preferences)
+        card_style = "border: 1px solid #303445; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 5px; padding: 5px; background-color: #191D30;"
+
+        for n, i in final_df.iterrows():
             href = i["url"]
             description = i["description"]
             url_txt = i["title"]
 
+            # Construct card for each item
             result_str += (
-                f'<a href="{href}" target="_blank" style="background-color: whitesmoke; display: block; height:100%; text-decoration: none; color: black; line-height: 1.2;">'
-                + f'<tr style="align:justify; border-left: 5px solid transparent; border-top: 5px solid transparent; border-bottom: 5px solid transparent; font-weight: bold; font-size: 18px; background-color: whitesmoke;">{url_txt}</tr></a>'
-                + f'<a href="{href}" target="_blank" style="background-color: whitesmoke; display: block; height:100%; text-decoration: none; color: dimgray; line-height: 1.25;">'
-                + f'<tr style="align:justify; border-left: 5px solid transparent; border-top: 0px; border-bottom: 5px solid transparent; font-size: 14px; padding-bottom:5px;">{description}</tr></a>'
-                + f'<a href="{href}" target="_blank" style="background-color: whitesmoke; display: block; height:100%; text-decoration: none; color: black;">'
-                + f'<tr style="border: none;"><td style="border: none; height: 10px;"></td></tr>'
+                f'<tr style="border: none;"><td style="border: none;">'
+                + f'<a href="{href}" target="_blank" style="text-decoration: none;">'
+                + f'<div style="{card_style}">'
+                + f'<div style="font-weight: bold; font-size: 18px; color: white; margin-bottom: 8px;">{url_txt}</div>'
+                + f'<div style="font-size: 14px; color: #B1BCC1;">{description}</div>'
+                + f"</div>"
+                + f"</a>"
+                + f"</td></tr>"
             )
         result_str += "</table></html>"
         return result_str

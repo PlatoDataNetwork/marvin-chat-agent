@@ -168,7 +168,7 @@ def submitPrompt(prompt):
 
 
 st.set_page_config(
-    page_title="Marvin by PlatoAI",
+    page_title="PlatoAI",
     page_icon="🤖",
     layout="centered",
     initial_sidebar_state="expanded",
@@ -201,6 +201,7 @@ if check_password():
     voiceList = [v.name for v in voices()]
     voiceList.insert(0, "None")
     with st.sidebar:
+        st.title("PlatoAI")
         selectedVoice = st.selectbox(
             label="Choose the voice",
             options=voiceList,
@@ -212,13 +213,15 @@ if check_password():
         st.session_state.selected_voice = selectedVoice
         # Update the session state with the currently selected option
         st.session_state.selected_tone = selectedTone
-        aiTab, toolsTab = st.tabs(["AI News", "AI Tools"])
+        # aiTab, toolsTab = st.tabs(["AI News", "AI Tools"])
 
-        with aiTab:
-            with st.container():
-                st.markdown(feed_items, unsafe_allow_html=True)
+        # rssData = rss_reader.getFeedData()
+        # with aiTab:
+        # with st.container():
+        # st.dataframe(rssData)
+        st.markdown(feed_items, unsafe_allow_html=True)
 
-    st.title("Hi, " + st.session_state.current_user + ". Chat with Marvin about AI Intel")
+    st.title("Hi, " + st.session_state.current_user + ". Let's talk about AI News.")
 
     session_id = st.session_state.current_user  # an identifier for your user
 
@@ -372,6 +375,7 @@ if check_password():
         if len(wav_audio_data) > 0:
             with open("test.wav", "wb") as f:
                 f.write(wav_audio_data)
+            # wav_audio_data = bytearray()
             x = open("test.wav", "rb")
 
             # display audio data as received on the backend
@@ -384,5 +388,6 @@ if check_password():
             # if prompt := transcript.text:
             #    submitPrompt(prompt)
     # else:
+
     if prompt := st.chat_input():
         submitPrompt(prompt)
