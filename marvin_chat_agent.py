@@ -20,7 +20,8 @@ from langchain.chains.conversation.memory import ConversationBufferWindowMemory
 from langchain.vectorstores import Vectara
 from rss_reader import RssReader
 from PIL import Image
-import promptlayer
+
+# import promptlayer
 from langchain.callbacks import PromptLayerCallbackHandler
 from langchain.memory.chat_message_histories import ZepChatMessageHistory
 from elevenlabs import generate, play, voices
@@ -45,7 +46,7 @@ USE_ZEP = strtobool(os.getenv("USE_ZEP"))
 PROMPT_LAYER_API_KEY = os.getenv("PROMPT_LAYER_API_KEY")
 ELEVEN_LABS_API_KEY = os.getenv("ELEVEN_LABS_API_KEY")
 
-promptlayer.api_key = PROMPT_LAYER_API_KEY
+# promptlayer.api_key = PROMPT_LAYER_API_KEY
 
 
 def check_session_state(state_key, action):
@@ -328,14 +329,14 @@ if check_password():
                 "more information about anything related to technology news"
             ),
         ),
-        Tool(
-            name="AIPapers",
-            func=qaPapers.run,
-            description=(
-                "use this tool when answering general knowledge queries to get "
-                "more information about anything related to artifical intelligence academic knowledge and published papers"
-            ),
-        ),
+        # Tool(
+        #    name="AIPapers",
+        #    func=qaPapers.run,
+        #    description=(
+        #        "use this tool when answering general knowledge queries to get "
+        #        "more information about anything related to artifical intelligence academic knowledge and published papers"
+        #    ),
+        # ),
         # Tool(
         #    name="AITools",
         #    func=qaTools.run,
@@ -383,10 +384,9 @@ if check_password():
             with st.spinner("Transcribing Voice..."):
                 transcript = openai.Audio.transcribe("whisper-1", x)
             submitPrompt(transcript.text)
+            # os.remove("test.wav")
             # st.markdown(transcript.text)
 
-            # if prompt := transcript.text:
-            #    submitPrompt(prompt)
     # else:
 
     if prompt := st.chat_input():
