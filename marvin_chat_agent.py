@@ -27,6 +27,7 @@ from elevenlabs import generate, play, voices
 from elevenlabs.api.error import UnauthenticatedRateLimitError, RateLimitError
 from st_custom_components import st_audiorec
 import openai
+import re
 
 
 langchain.verbose = False
@@ -120,20 +121,36 @@ def autoplay_audio(audio_data):
     )
 
 
+def extract_content(text):
+    pattern = r"content\s*<!-- -->(.*?)Source:"
+    match = re.search(pattern, text, re.S)
+    if match:
+        return match.group(1).strip()
+
+
 def submitPrompt(prompt):
     # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
     st.chat_message("user").write(prompt)
 
+    docs = vectorstorePlatoHealth.similarity_search(prompt, 1, 0.025, None, 100)
+
+    for doc in docs:
+        st.markdown("Document: " + doc.page_content)
+        st.markdown("Metadata:")
+        for key, value in doc.metadata.items():
+            st.markdown(f"{key}: {str(value)}")
+
     with st.chat_message("assistant", avatar="https://i.imgur.com/Ak1BMy5.png"):
         st_callback = StreamlitCallbackHandler(st.container())
 
     try:
-        response = agent.run(
+        response = qa.run(
             prompt
             + ". Please answer with a "
             + selectedTone
-            + " tone and please address the user using the user's first name.",
+            + " tone as if speakinge one on one with the user, and please address the user using the user's first name. Do not write the user a letter. Write conversationally instead. The user's name is: "
+            + st.session_state.current_user,
             callbacks=[st_callback],
         )
     except Exception as e:
@@ -145,8 +162,8 @@ def submitPrompt(prompt):
             raise Exception(str(e))
     st.session_state.messages.append({"role": "assistant", "content": response})
 
-    with st.chat_message("assistant", avatar="https://i.imgur.com/Ak1BMy5.png"):
-        st.markdown(response)
+    # with st.chat_message("assistant", avatar="https://i.imgur.com/Ak1BMy5.png"):
+    #    st.markdown(response)
 
     if selectedVoice != "None":
         with st.spinner("Generating Audio..."):
@@ -180,10 +197,10 @@ if check_password():
 
     # Check if 'selected_option' is already in the session state
     if "selected_tone" not in st.session_state:
-        st.session_state.selected_tone = "Witty Newscaster"  # default value
+        st.session_state.selected_tone = "Medical Doctor"  # default value
 
     tones = [
-        "Professional",
+        "Medical Doctor",
         "Friendly Network Newscaster",
         "Witty Newscaster",
         "GenZ Influencer",
@@ -196,7 +213,7 @@ if check_password():
     ]
 
     if "selected_voice" not in st.session_state:
-        st.session_state.selected_voice = "Elli"  # default value
+        st.session_state.selected_voice = "None"  # default value
 
     voiceList = [v.name for v in voices()]
     voiceList.insert(0, "None")
@@ -205,7 +222,7 @@ if check_password():
         selectedVoice = st.selectbox(
             label="Choose the voice",
             options=voiceList,
-            index=voiceList.index(st.session_state.selected_voice),
+            index=0,
         )
         selectedTone = st.selectbox(
             "Tone", tones, index=tones.index(st.session_state.selected_tone)
@@ -221,7 +238,7 @@ if check_password():
         # st.dataframe(rssData)
         # st.markdown(feed_items, unsafe_allow_html=True)
 
-    st.title("Hi, " + st.session_state.current_user + ". Let's talk about AI News.")
+    st.title("Hi, " + st.session_state.current_user + ". Let's talk about Health News.")
 
     session_id = st.session_state.current_user  # an identifier for your user
 
@@ -268,6 +285,13 @@ if check_password():
         openai_api_key=OPENAI_API_KEY if OPENAI_API_KEY else st.secrets["OPENAI_API_KEY"],
     )
 
+    llm4Stream = ChatOpenAI(
+        temperature=0.5,
+        model="gpt-4",
+        streaming=True,
+        openai_api_key=OPENAI_API_KEY if OPENAI_API_KEY else st.secrets["OPENAI_API_KEY"],
+    )
+
     # memory
     if "memory" not in st.session_state:
         if USE_ZEP:
@@ -283,32 +307,10 @@ if check_password():
                 memory_key="chat_history", k=5, return_messages=True
             )
 
+    retriever = vectorstorePlatoHealth.as_retriever()
     # retrieval qa chain
-    qa = RetrievalQA.from_chain_type(
-        llm=llm35,
-        chain_type="stuff",
-        retriever=vectorstorePlatoHealth.as_retriever(),
-        return_source_documents=False,
-    )
-
-    tools = [
-        Tool(
-            name="AINews",
-            func=qa.run,
-            description=(
-                "use this tool when answering general knowledge queries to get "
-                "more information about anything related to technology news"
-            ),
-        ),
-    ]
-
-    agent = initialize_agent(
-        tools,
-        llm35Stream,
-        agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION,
-        max_iterations=3,
-        early_stopping_method="generate",
-        memory=st.session_state.memory,
+    qa: RetrievalQA = RetrievalQA.from_chain_type(
+        llm=llm35Stream, chain_type="stuff", retriever=retriever, return_source_documents=False
     )
 
     transcript = ""
